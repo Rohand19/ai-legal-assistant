@@ -12,6 +12,7 @@ from pathlib import Path
 import PyPDF2
 import chromadb
 from chromadb.utils import embedding_functions
+from chromadb.config import Settings
 import json
 from .summary_agent import SummaryAgent
 import os
@@ -23,12 +24,11 @@ class QueryAgent:
             model_name="all-MiniLM-L6-v2"
         )
         
-        # Create persistent directory for ChromaDB
-        persist_dir = Path("data/chroma_db")
-        persist_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Initialize ChromaDB with persistent storage
-        self.client = chromadb.PersistentClient(path=str(persist_dir))
+        # Initialize ChromaDB with in-memory storage
+        self.client = chromadb.Client(Settings(
+            chroma_db_impl="duckdb+parquet",
+            persist_directory=None  # This makes it use in-memory storage
+        ))
         
         # Try to get existing collection or create a new one
         try:
