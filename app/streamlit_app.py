@@ -2,6 +2,7 @@ import streamlit as st
 import json
 from dotenv import load_dotenv
 import os
+import requests
 import google.generativeai as genai
 from agents.query_agent import QueryAgent
 from agents.summary_agent import SummaryAgent
@@ -13,11 +14,7 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Initialize agents
-@st.cache_resource
-def get_query_agent():
-    return QueryAgent()
-
-query_agent = get_query_agent()
+query_agent = QueryAgent()
 
 # Set page config
 st.set_page_config(
@@ -86,8 +83,14 @@ with st.form("query_form"):
 if submit_button and query:
     with st.spinner("Analyzing your question..."):
         try:
-            # Process query directly using QueryAgent
-            result = query_agent.process_query(query)
+            # Make request to FastAPI backend
+            response = requests.post(
+                "http://localhost:8000/api/query",
+                json={"query": query},
+                timeout=30
+            )
+            response.raise_for_status()
+            result = response.json()
 
             # Display simple explanation
             st.header("📝 Summary")
