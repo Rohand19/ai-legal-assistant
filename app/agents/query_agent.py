@@ -14,11 +14,20 @@ class QueryAgent:
             model_name="all-MiniLM-L6-v2"
         )
         self.client = chromadb.Client()
-        self.collection = self.client.create_collection(
-            name="legal_docs",
-            embedding_function=self.embedding_function
-        )
-        self._initialize_documents()
+        
+        # Try to get existing collection or create a new one
+        try:
+            self.collection = self.client.get_collection(
+                name="legal_docs",
+                embedding_function=self.embedding_function
+            )
+        except ValueError:  # Collection doesn't exist
+            self.collection = self.client.create_collection(
+                name="legal_docs",
+                embedding_function=self.embedding_function
+            )
+            self._initialize_documents()
+        
         self.model = genai.GenerativeModel('gemini-2.0-flash')
         self.summary_agent = SummaryAgent()
 

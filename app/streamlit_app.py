@@ -3,8 +3,8 @@ import json
 from dotenv import load_dotenv
 import os
 import google.generativeai as genai
-from app.agents.query_agent import QueryAgent
-from app.agents.summary_agent import SummaryAgent
+from agents.query_agent import QueryAgent
+from agents.summary_agent import SummaryAgent
 
 # Load environment variables
 load_dotenv()
