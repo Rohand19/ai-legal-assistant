@@ -114,7 +114,7 @@ streamlit run app/streamlit_app.py
 
 ### POST /process-query
 Process a legal query:
-```json
+```bash
 curl -X POST http://localhost:8000/process-query \
   -H "Content-Type: application/json" \
   -d '{"query": "What are the steps involved in filing a lawsuit in India?"}'
