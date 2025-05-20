@@ -1,11 +1,19 @@
 import streamlit as st
-import requests
 import json
 from dotenv import load_dotenv
 import os
+import google.generativeai as genai
+from app.agents.query_agent import QueryAgent
+from app.agents.summary_agent import SummaryAgent
 
 # Load environment variables
 load_dotenv()
+
+# Configure Gemini
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+# Initialize agents
+query_agent = QueryAgent()
 
 # Set page config
 st.set_page_config(
@@ -74,14 +82,8 @@ with st.form("query_form"):
 if submit_button and query:
     with st.spinner("Analyzing your question..."):
         try:
-            # Make request to FastAPI backend
-            response = requests.post(
-                "http://localhost:8000/api/query",
-                json={"query": query},
-                timeout=30
-            )
-            response.raise_for_status()
-            result = response.json()
+            # Process query directly using the QueryAgent
+            result = query_agent.process_query(query)
 
             # Display simple explanation
             st.header("📝 Summary")
@@ -130,7 +132,5 @@ if submit_button and query:
                         if source.get("relevance"):
                             st.markdown(f"**Relevance:** {source['relevance']}")
 
-        except requests.exceptions.RequestException as e:
-            st.error(f"Error connecting to the server: {str(e)}")
         except Exception as e:
             st.error(f"An error occurred: {str(e)}") 

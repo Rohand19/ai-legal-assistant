@@ -31,6 +31,44 @@ app = FastAPI(
 query_agent = QueryAgent()
 summary_agent = SummaryAgent()
 
+# Predefined conversational responses
+CONVERSATIONAL_RESPONSES = {
+    "hello": "Hello! I'm a legal assistant bot. How can I help you with legal information today?",
+    "hi": "Hi there! I'm here to help you with legal questions and information. What would you like to know?",
+    "how are you": "I'm functioning well and ready to help you with legal questions! What legal matter can I assist you with?",
+    "bye": "Goodbye! If you have more legal questions in the future, feel free to ask.",
+    "thanks": "You're welcome! Let me know if you need any more help with legal matters.",
+    "thank you": "You're welcome! Feel free to ask any legal questions you may have."
+}
+
+def is_conversational_query(query: str) -> tuple[bool, str]:
+    """
+    Determine if a query is conversational and return appropriate response.
+    
+    Args:
+        query (str): The user's query
+        
+    Returns:
+        tuple[bool, str]: (is_conversational, response_if_conversational)
+    """
+    query_lower = query.lower().strip()
+    
+    # Check for exact matches
+    if query_lower in CONVERSATIONAL_RESPONSES:
+        return True, CONVERSATIONAL_RESPONSES[query_lower]
+    
+    # Check for greetings
+    greetings = ["hey", "good morning", "good afternoon", "good evening"]
+    if any(greeting in query_lower for greeting in greetings):
+        return True, "Hello! I'm your legal assistant bot. How can I help you with legal information today?"
+    
+    # Check for gratitude
+    gratitude = ["appreciate", "grateful", "thank"]
+    if any(word in query_lower for word in gratitude):
+        return True, "You're welcome! Feel free to ask any legal questions you may have."
+    
+    return False, ""
+
 class Query(BaseModel):
     query: str
 
@@ -75,7 +113,18 @@ async def process_query(query: Query) -> Dict[Any, Any]:
     try:
         logger.info(f"Processing query: {query.query}")
         
-        # Get response from query agent
+        # Check if it's a conversational query
+        is_conversational, conv_response = is_conversational_query(query.query)
+        if is_conversational:
+            return {
+                "simple_explanation": conv_response,
+                "key_points": [],
+                "important_terms": [],
+                "warnings_and_deadlines": [],
+                "sources": []
+            }
+        
+        # Get response from query agent for legal queries
         query_result = query_agent.process_query(query.query)
         logger.debug(f"Query agent response: {query_result}")
         
