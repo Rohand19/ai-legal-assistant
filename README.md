@@ -1,4 +1,4 @@
-# Legal Assistant AI 🤖⚖️
+# AI Legal Assistant 🤖⚖️
 
 An AI-powered legal assistant that helps users understand legal procedures and requirements in India. The system uses Google's Gemini model and a multi-agent architecture to process queries, extract relevant information from legal documents, and provide structured, easy-to-understand responses.
 
