@@ -14,7 +14,7 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Get API URL from environment variable with fallback to localhost
-API_URL = os.getenv("https://ai-legal-assistant-wi28.onrender.com", "http://localhost:8000")
+API_URL = os.getenv("https://api.render.com/deploy/srv-d0m656pr0fns73cb9ulg?key=mM9KdrmPwV4", "http://localhost:8000")
 
 # Initialize agents
 query_agent = QueryAgent()
