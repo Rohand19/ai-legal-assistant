@@ -2,6 +2,13 @@ from typing import List, Dict, Any
 import google.generativeai as genai
 from pathlib import Path
 import PyPDF2
+import sys
+import __main__
+try:
+    import pysqlite3
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+except ImportError:
+    pass
 import chromadb
 from chromadb.utils import embedding_functions
 import json
