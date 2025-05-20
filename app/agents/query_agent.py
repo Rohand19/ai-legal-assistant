@@ -14,6 +14,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 import json
 from .summary_agent import SummaryAgent
+import os
 
 class QueryAgent:
     def __init__(self):
@@ -21,7 +22,13 @@ class QueryAgent:
         self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name="all-MiniLM-L6-v2"
         )
-        self.client = chromadb.Client()
+        
+        # Create persistent directory for ChromaDB
+        persist_dir = Path("data/chroma_db")
+        persist_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize ChromaDB with persistent storage
+        self.client = chromadb.PersistentClient(path=str(persist_dir))
         
         # Try to get existing collection or create a new one
         try:
