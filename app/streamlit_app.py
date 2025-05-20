@@ -13,6 +13,9 @@ load_dotenv()
 # Configure Gemini
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+# Get API URL from environment variable with fallback to localhost
+API_URL = os.getenv("https://ai-legal-assistant-wi28.onrender.com", "http://localhost:8000")
+
 # Initialize agents
 query_agent = QueryAgent()
 
@@ -85,7 +88,7 @@ if submit_button and query:
         try:
             # Make request to FastAPI backend
             response = requests.post(
-                "http://localhost:8000/api/query",
+                f"{API_URL}/api/query",
                 json={"query": query},
                 timeout=30
             )
