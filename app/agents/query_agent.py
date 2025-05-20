@@ -1,21 +1,12 @@
-# Configure SQLite before any other imports
-import sys
-try:
-    import pysqlite3
-    sys.modules['sqlite3'] = pysqlite3
-except ImportError:
-    pass
-
 from typing import List, Dict, Any
 import google.generativeai as genai
 from pathlib import Path
 import PyPDF2
+import sys
 import chromadb
 from chromadb.utils import embedding_functions
-from chromadb.config import Settings
 import json
 from .summary_agent import SummaryAgent
-import os
 
 class QueryAgent:
     def __init__(self):
@@ -23,12 +14,7 @@ class QueryAgent:
         self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name="all-MiniLM-L6-v2"
         )
-        
-        # Initialize ChromaDB with in-memory storage
-        self.client = chromadb.Client(Settings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=None  # This makes it use in-memory storage
-        ))
+        self.client = chromadb.Client()
         
         # Try to get existing collection or create a new one
         try:
