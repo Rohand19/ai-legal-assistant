@@ -3,96 +3,178 @@ import google.generativeai as genai
 import json
 
 class SummaryAgent:
-    def __init__(self):
+    def __init__(self, api_key: str):
+        """Initialize the Summary Agent with Google API key."""
+        genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-2.0-flash')
 
-    def _parse_response(self, response_text: str) -> Dict[str, Any]:
-        """Safely parse the model's response into a dictionary."""
+    def summarize_legal_information(self, query_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Summarize and simplify legal information from query results."""
+        # Check if this is a non-legal query response
+        if (len(query_results.get("relevant_sections", [])) == 0 and 
+            "simple_explanation" in query_results):
+            return query_results
+
+        # Prepare the content for summarization
+        sections = "\n\n".join([
+            f"Source: {section['source']}\nSection: {section['section']}\nContent: {section['content']}"
+            for section in query_results.get("relevant_sections", [])
+        ])
+        
+        prompt = f"""You are a specialized legal summarization agent. Your task is to analyze and structure the following information:
+
+        Content to analyze:
+        Legal Context: {query_results.get('legal_context', '')}
+        Applicable Laws: {', '.join(query_results.get('applicable_laws', []))}
+        Relevant Sections:
+        {sections}
+        
+        Provide a clear, structured response in JSON format with the following components:
+        {{
+            "simple_explanation": "A clear, concise explanation in plain language",
+            "key_points": ["List of important points"],
+            "important_terms": [
+                {{
+                    "term": "The legal term",
+                    "definition": "Simple explanation of the term"
+                }}
+            ],
+            "warnings_and_deadlines": [
+                {{
+                    "warning": "Important warning",
+                    "deadline": "Associated deadline (if any)"
+                }}
+            ],
+            "step_by_step_guide": [
+                {{
+                    "step": "1",
+                    "title": "Step title",
+                    "description": "What to do"
+                }}
+            ],
+            "sources": [
+                {{
+                    "title": "Document title",
+                    "description": "Clear description of what this source contributes"
+                }}
+            ]
+        }}
+
+        Guidelines:
+        1. Use dictionary format for all structured data (terms, warnings, steps)
+        2. Make explanations clear and accessible to non-lawyers
+        3. Include specific deadlines and requirements in warnings
+        4. Break down complex procedures into clear steps
+        5. Preserve accuracy while simplifying language"""
+        
         try:
-            # Clean the response text and ensure it's valid JSON
-            cleaned_text = response_text.strip().replace('\n', ' ').replace('\r', '')
-            result = json.loads(cleaned_text)
+            response = self.model.generate_content(prompt)
+            result = self._parse_json_response(response.text)
             
-            # Handle different response formats
-            if isinstance(result, list):
-                return {"key_points": result}
-            elif isinstance(result, dict):
-                if "key_points" in result:
-                    points = result["key_points"]
-                    if isinstance(points, str):
-                        # Split string into list if it contains bullet points
-                        points = [p.strip().lstrip('•-*') for p in points.split('\n') if p.strip()]
-                        result["key_points"] = points
-                return result
-            return {"key_points": [str(result)]}
-        except json.JSONDecodeError:
-            # Fallback response if parsing fails
+            # Ensure consistent structure
             return {
-                "simplified_text": response_text,
-                "terms": [],
-                "warnings": [],
-                "key_points": [response_text]
+                "simple_explanation": result.get("simple_explanation", ""),
+                "key_points": result.get("key_points", []),
+                "important_terms": result.get("important_terms", []),
+                "warnings_and_deadlines": result.get("warnings_and_deadlines", []),
+                "step_by_step_guide": result.get("step_by_step_guide", []),
+                "sources": result.get("sources", [])
+            }
+        except Exception as e:
+            return {
+                "simple_explanation": f"Error summarizing information: {str(e)}",
+                "key_points": [],
+                "important_terms": [],
+                "warnings_and_deadlines": [],
+                "step_by_step_guide": [],
+                "sources": []
             }
 
     def simplify_text(self, text: str) -> Dict[str, Any]:
-        """Convert complex legal text into simple, easy-to-understand language."""
-        prompt = f"""Analyze the following legal text and provide a structured response:
+        """Simplify complex legal text into plain language."""
+        prompt = f"""Simplify this legal text into plain language:
 
-{text}
+        {text}
 
-Please provide:
-1. A simple explanation in plain language (2-3 paragraphs)
-2. A list of key terms and their definitions in the format "term: definition"
-3. A list of important warnings or deadlines
-
-Format the response as JSON with the following structure:
-{{
-    "simplified_text": "your simple explanation here",
-    "terms": ["term1: definition1", "term2: definition2"],
-    "warnings": ["warning1", "warning2"]
-}}"""
-
-        response = self.model.generate_content(prompt)
-        return self._parse_response(response.text)
-
-    def create_step_by_step_guide(self, text: str) -> Dict[str, Any]:
-        """Create a step-by-step guide from legal procedures."""
-        prompt = f"""Convert the following legal procedure into a clear step-by-step guide:
-
-{text}
-
-Format the response as JSON with the following structure:
-{{
-    "steps": [
+        Return a JSON object with:
         {{
-            "title": "Step title",
-            "description": "Detailed explanation",
-            "requirements": ["requirement1", "requirement2"]
-        }}
-    ]
-}}
+            "simplified_text": "plain language explanation",
+            "terms": [
+                {{
+                    "term": "legal term",
+                    "definition": "simple explanation"
+                }}
+            ],
+            "warnings": ["any important warnings or deadlines"]
+        }}"""
 
-Make sure each step is clear, actionable, and includes any necessary requirements or documents."""
+        try:
+            response = self.model.generate_content(prompt)
+            return self._parse_json_response(response.text)
+        except Exception:
+            return {
+                "simplified_text": text,
+                "terms": [],
+                "warnings": []
+            }
 
-        response = self.model.generate_content(prompt)
-        return self._parse_response(response.text)
+    def extract_key_points(self, text: str) -> Dict[str, List[str]]:
+        """Extract key points from legal text."""
+        prompt = f"""Extract the key points from this legal text:
 
-    def extract_key_points(self, text: str) -> Dict[str, Any]:
-        """Extract and summarize key points from legal text."""
-        prompt = f"""Extract the most important points from this legal text:
+        {text}
 
-{text}
+        Return a JSON object with:
+        {{
+            "key_points": ["list of important points"]
+        }}"""
 
-Format the response as a list of key points.
-Include:
-- Main takeaways
-- Deadlines or time-sensitive information
-- Required actions
-- Rights and protections
-- Potential consequences
+        try:
+            response = self.model.generate_content(prompt)
+            return self._parse_json_response(response.text)
+        except Exception:
+            return {"key_points": []}
 
-Format the response as a JSON array of strings:
-["Point 1", "Point 2", "Point 3"]"""
+    def create_step_by_step_guide(self, text: str) -> Dict[str, List[Dict[str, str]]]:
+        """Create a step-by-step guide from legal text."""
+        prompt = f"""Create a step-by-step guide from this legal text:
 
-        response = self.model.generate_content(prompt)
-        return self._parse_response(response.text) 
+        {text}
+
+        Return a JSON object with:
+        {{
+            "steps": [
+                {{
+                    "step": "step number",
+                    "description": "what to do"
+                }}
+            ]
+        }}"""
+
+        try:
+            response = self.model.generate_content(prompt)
+            return self._parse_json_response(response.text)
+        except Exception:
+            return {"steps": []}
+    
+    def _parse_json_response(self, text: str) -> Dict[str, Any]:
+        """Parse and clean JSON response from the model."""
+        text = text.strip()
+        if text.startswith('```json'):
+            text = text[7:]
+        if text.startswith('```'):
+            text = text[3:]
+        if text.endswith('```'):
+            text = text[:-3]
+        
+        try:
+            return json.loads(text.strip())
+        except json.JSONDecodeError:
+            return {
+                "simple_explanation": "Error parsing response",
+                "key_points": [],
+                "important_terms": [],
+                "warnings_and_deadlines": [],
+                "step_by_step_guide": [],
+                "sources": []
+            }
